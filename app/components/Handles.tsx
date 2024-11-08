@@ -29,8 +29,8 @@ export const handleDragEnd = (
   }
 };
 
-// sensorsのエクスポート
-export const createSensors = () => {
+// useCreateSensorsカスタムフック
+export const useCreateSensors = () => {
   return useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {

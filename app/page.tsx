@@ -18,7 +18,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { handleFileChange, handleDragEnd, createSensors } from '@/app/components/Handles';
+import { handleFileChange, handleDragEnd, useCreateSensors } from '@/app/components/Handles';
 
 interface SortableItemProps {
   id: string;
@@ -63,7 +63,7 @@ const SortableItem: React.FC<SortableItemProps> = ({ id, file, onDelete }) => {
 export default function Page() {
   const [pdfFiles, setPdfFiles] = useState<File[]>([]);
   const [hydrated, setHydrated] = useState(false);
-  const sensors = createSensors();
+  const sensors = useCreateSensors();
 
   useEffect(() => {
     setHydrated(true);
@@ -129,7 +129,7 @@ export default function Page() {
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
-        onDragEnd={(event) => handleDragEnd(event, setPdfFiles, pdfFiles)}
+        onDragEnd={(event) => handleDragEnd(event, setPdfFiles)}
       >
         <SortableContext
           items={pdfFiles.map(file => file.name)}
