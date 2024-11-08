@@ -1,6 +1,8 @@
+// page.tsx
+
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button, Card, IconButton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
@@ -8,21 +10,15 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { mergePDFs } from '@/app/services/pdfService';
 import {
   DndContext,
-  DragEndEvent,
   closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
 } from '@dnd-kit/core';
 import {
-  arrayMove,
   SortableContext,
-  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { handleFileChange, handleDragEnd, createSensors } from '@/app/components/Handles';
 
 interface SortableItemProps {
   id: string;
@@ -66,36 +62,21 @@ const SortableItem: React.FC<SortableItemProps> = ({ id, file, onDelete }) => {
 
 export default function Page() {
   const [pdfFiles, setPdfFiles] = useState<File[]>([]);
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  );
+  const [hydrated, setHydrated] = useState(false);
+  const sensors = createSensors();
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setPdfFiles([...pdfFiles, ...Array.from(e.target.files)]);
-    }
-  };
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
-  // Removed custom DragEndEvent interface
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      setPdfFiles((files) => {
-        const oldIndex = files.findIndex((f) => f.name === active.id.toString());
-        const newIndex = files.findIndex((f) => f.name === over.id.toString());
-        return arrayMove(files, oldIndex, newIndex);
-      });
-    }
-  };
+  if (!hydrated) {
+    return null; // クライアントサイドでのみレンダリングするため、サーバーサイドでは何も表示しない
+  }
 
   const handleDelete = (fileName: string) => {
     setPdfFiles(files => files.filter(file => file.name !== fileName));
   };
-  
+
   const downloadPDF = (pdfBuffer: ArrayBuffer, filename: string): void => {
     const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
@@ -107,11 +88,10 @@ export default function Page() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
-  
-  // handleMergePDFsの実装を修正
+
   const handleMergePDFs = async () => {
     if (pdfFiles.length === 0) return;
-    
+
     const result = await mergePDFs(pdfFiles);
     if (result.success && result.mergedPDF) {
       downloadPDF(result.mergedPDF, 'merged.pdf');
@@ -119,8 +99,6 @@ export default function Page() {
       alert(result.error || 'PDFの結合に失敗しました');
     }
   };
-
-  // 既存のdownloadPDFとhandleMergePDFs関数はそのまま
 
   return (
     <div className="p-8">
@@ -136,7 +114,7 @@ export default function Page() {
             hidden
             multiple
             accept=".pdf"
-            onChange={handleFileChange}
+            onChange={(e) => handleFileChange(e, setPdfFiles, pdfFiles)}
           />
         </Button>
         <Button
@@ -151,7 +129,7 @@ export default function Page() {
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
+        onDragEnd={(event) => handleDragEnd(event, setPdfFiles, pdfFiles)}
       >
         <SortableContext
           items={pdfFiles.map(file => file.name)}
